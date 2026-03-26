@@ -8,3 +8,15 @@ __pycache__/
 
 strategies/registry.json
 results/
+
+# Generated research artifacts
+research/factors/
+research/models/
+
+# Local market data snapshots
+storage/catalog.json
+storage/parquet/
+storage/source/
+
+# Keep repository docs under storage/
+!storage/README.md
