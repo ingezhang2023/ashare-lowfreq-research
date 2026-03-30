@@ -98,31 +98,62 @@ ashare-backtest-web
 
 如果后面要切到你自己的本地数据，只需要把配置里的 `storage root` 换掉，再走下面的完整工作流即可。
 
-## 开源发布前建议
-
-如果目标是让别人 clone 后尽快体验，建议至少保证这条最短路径可用：
-
-- 用 `python -m pip install -e ".[dev]"` 完成安装
-- 从 `.env.example` 复制出本地 `.env`
-- 从 [`examples/demo_research_config.toml`](/Users/yongqiuwu/works/github/Trade/examples/demo_research_config.toml) 开始改自己的研究配置
-- 用 [`configs/demo_research.toml`](/Users/yongqiuwu/works/github/Trade/configs/demo_research.toml) 直接跑仓库里跟踪的 `storage/demo/` 极小样例数据
-- 如果希望无需 Tushare 账号就能体验 Web 控制台，额外提供一份可追踪的小型 demo 数据
-
-当前仓库的大部分 CLI / Web 流程仍默认依赖 `storage/` 下已有本地数据。现在仓库已经提供了一个可提交的 `storage/demo/` 最小样例数据集，方便对外演示。
-
-也可以先用这个初始化脚本快速搭本地环境：
-
-```bash
-bash scripts/bootstrap_demo.sh
-```
-
 ## 快速开始
 
-把本地 SQLite 行情导入 parquet 存储：
+如果你要在自己的数据上跑完整工作流，建议先把本地数据底座准备好。
+
+推荐顺序如下：
+
+1. 安装项目并从 `.env.example` 复制出 `.env`
+2. 填写 `TUSHARE_TOKEN`
+3. 先用 Tushare 同步出第一版本地 SQLite 行情库
+4. 再把 SQLite 导入成 Parquet 存储
+5. 最后再跑因子、研究配置、回测或 Web 控制台
+
+### 准备第一版 SQLite 行情数据
+
+仓库里的本地数据分成两层：
+
+- `storage/source/`：可写的源 SQLite 数据库
+- `storage/parquet/`：研究和回测使用的 Parquet 快照
+
+第一次准备本地 SQLite 行情库时，可以运行：
+
+```bash
+ashare-backtest sync-tushare-sqlite \
+  --sqlite-path storage/source/ashare_arena_sync.db \
+  --start 20240101 \
+  --end 20260331
+```
+
+这个命令会：
+
+- 在不存在时创建 `storage/source/ashare_arena_sync.db`
+- 同步交易日历
+- 同步股票主数据
+- 同步日线行情到 SQLite
+- 刷新派生的 `all_active` 股票池
+
+如果还希望补齐 Web 和报表里常用的基准指数历史，可以继续执行：
+
+```bash
+ashare-backtest sync-tushare-benchmark \
+  --symbol 000300.SH \
+  --start 20240101 \
+  --end 20260331
+```
+
+### 把 SQLite 导入为 Parquet
+
+SQLite 准备好之后，再导入到 Parquet 分析层：
 
 ```bash
 ashare-backtest import-sqlite storage/source/ashare_arena_sync.db --storage-root storage
 ```
+
+这一步会在 `storage/parquet/` 下生成项目后续流程所需的标准文件，并刷新 `storage/catalog.json`。
+
+### 运行研究流程
 
 基于指定 universe 构建 factor snapshot：
 
@@ -140,7 +171,7 @@ ashare-backtest build-factors \
 ashare-backtest run-research-config configs/research_industry_v4_v1_1.toml
 ```
 
-如果只是做模板复制或对外示例，可以先从这个示例配置开始：
+如果你要新建自己的配置，可以先从模板开始：
 
 ```bash
 cp examples/demo_research_config.toml configs/demo_research.toml
@@ -162,6 +193,16 @@ ashare-backtest run-model-backtest \
   --end-date 2025-12-31 \
   --output-dir results/model_score_backtest
 ```
+
+### 启动 Web 控制台
+
+当 `storage/` 下已经有导入后的数据，并且你至少跑过一次研究或回测后，可以启动本地 Web 控制台：
+
+```bash
+ashare-backtest-web
+```
+
+默认访问地址是 `http://127.0.0.1:8765`。
 
 ## 数据同步
 

@@ -96,36 +96,67 @@ What this demo gives you:
 
 If you want to switch from demo data to your own local dataset later, update the storage root in your config and use the full workflow below.
 
-## Open Source Readiness
+## Quick Start
 
-To make this repository easy to evaluate after clone, treat these as the minimum operator path:
+Before running the full workflow on your own data, prepare the local data root first.
 
-- install with `python -m pip install -e ".[dev]"`
-- copy `.env.example` and fill `TUSHARE_TOKEN` only when using Tushare sync
-- start from [`examples/demo_research_config.toml`](/Users/yongqiuwu/works/github/Trade/examples/demo_research_config.toml) when creating a new research preset
-- use [`configs/demo_research.toml`](/Users/yongqiuwu/works/github/Trade/configs/demo_research.toml) for the tracked tiny sample dataset under `storage/demo/`
-- use local demo or prebuilt data artifacts if you want to showcase the web console without requiring a Tushare account
+Recommended preparation order:
 
-The repository still assumes local data exists under `storage/` for most backtest and web-console flows. A tracked tiny sample dataset now lives under `storage/demo/` for public evaluation.
+1. Install the project and copy `.env.example` to `.env`
+2. Fill in `TUSHARE_TOKEN`
+3. Create the first version of the local SQLite source database with Tushare sync
+4. Import SQLite into Parquet storage
+5. Run factor build, research, backtest, or the web console
 
-You can also use the bootstrap helper to set up a local virtual environment and install dependencies:
+### Prepare Initial SQLite Market Data
+
+The repository uses a two-layer local data layout:
+
+- `storage/source/`: writable source SQLite database
+- `storage/parquet/`: analysis-friendly Parquet snapshots used by research and backtests
+
+To create the first local SQLite market snapshot, run:
 
 ```bash
-bash scripts/bootstrap_demo.sh
+ashare-backtest sync-tushare-sqlite \
+  --sqlite-path storage/source/ashare_arena_sync.db \
+  --start 20240101 \
+  --end 20260331
 ```
 
-## Quick Start
+This command will:
+
+- create `storage/source/ashare_arena_sync.db` if it does not already exist
+- sync the trading calendar
+- sync stock master data
+- sync daily bars into SQLite
+- refresh the derived `all_active` universe
+
+If you also want benchmark history for web and reporting views, run:
+
+```bash
+ashare-backtest sync-tushare-benchmark \
+  --symbol 000300.SH \
+  --start 20240101 \
+  --end 20260331
+```
+
+### Import SQLite Into Parquet
+
+After SQLite is ready, import it into the Parquet storage layer:
+
+```bash
+ashare-backtest import-sqlite storage/source/ashare_arena_sync.db --storage-root storage
+```
+
+This generates the standard files expected by the rest of the project under `storage/parquet/` and refreshes `storage/catalog.json`.
+
+### Run The Research Flow
 
 Validate a strategy script:
 
 ```bash
 ashare-backtest validate strategies/buy_and_hold.py
-```
-
-Import local SQLite market data into parquet storage:
-
-```bash
-ashare-backtest import-sqlite storage/source/ashare_arena_sync.db --storage-root storage
 ```
 
 Build a factor snapshot from a named universe:
@@ -144,7 +175,7 @@ Run a configured research pipeline:
 ashare-backtest run-research-config configs/research_industry_v4_v1_1.toml
 ```
 
-Use the template config as a starting point for public examples or small reproducible runs:
+Use the template config as a starting point for new presets:
 
 ```bash
 cp examples/demo_research_config.toml configs/demo_research.toml
@@ -166,6 +197,16 @@ ashare-backtest run-model-backtest \
   --end-date 2025-12-31 \
   --output-dir results/model_score_backtest
 ```
+
+### Start The Web Console
+
+Once `storage/` contains imported data and you have at least one research or backtest run, start the local web console:
+
+```bash
+ashare-backtest-web
+```
+
+The default address is `http://127.0.0.1:8765`.
 
 ## Data Sync
 
