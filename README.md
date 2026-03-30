@@ -1,124 +1,126 @@
-# A-Share Low-Frequency Backtesting Toolkit
+# A 股低频策略回测工具
 
-[中文说明](README.zh-CN.md)
+[English README](README.en.md)
 
-This repository is a personal A-share research and backtesting toolkit focused on a narrow, maintainable workflow:
+这是一个面向个人研究使用的 A 股低频回测与盘前准备工具，目标是把数据同步、因子构建、模型训练、分数回测和模拟执行收敛到一条可维护的本地工作流里。
 
-- sync and standardize local A-share market data
-- build factor panels and train score models
-- run score-driven backtests with realistic execution constraints
-- inspect results in a lightweight web console
-- generate latest stock selection, premarket reference, and simulation artifacts
+当前仓库重点解决的是：
 
-The project is intentionally opinionated. It is not trying to become a general-purpose quant platform.
+- 同步并标准化本地 A 股日线数据
+- 基于 universe 构建 factor snapshot 并训练分数模型
+- 运行 walk-forward / as-of-date 打分与分数驱动回测
+- 生成盘前参考、latest 状态和模拟账户计划
+- 通过本地 Web 控制台查看数据状态、回测结果和模拟执行历史
 
-## Current Scope
+这个项目是有边界的，不打算扩展成通用量化平台。
 
-- Market: mainland China A-shares
-- Frequency: daily bars
-- Strategy shape: long-only stock portfolios
-- Research loop: factor build -> model training -> walk-forward / latest inference -> score backtest
-- Execution controls: commission, stamp tax, slippage, participation cap, pending-order handling
-- Interfaces: CLI plus a local backtest web console
+## 当前边界
 
-Out of scope for now:
+- 市场：A 股
+- 频率：日线
+- 策略类型：多头股票组合
+- 研究链路：factor build -> model training -> walk-forward / latest inference -> score backtest
+- 执行约束：手续费、印花税、滑点、成交参与率上限、挂单保留天数
+- 使用方式：CLI + 本地 Web 控制台
 
-- intraday / tick-level simulation
-- derivatives, margin, or multi-asset portfolios
-- distributed scheduling and multi-tenant infrastructure
-- arbitrary unrestricted Python strategy execution
+当前明确不做：
 
-## Repository Layout
+- 分钟级、逐笔、盘口回测
+- 衍生品、融资融券、多资产组合
+- 分布式调度和多租户系统
+- 任意无约束 Python 策略执行
 
-- `src/ashare_backtest/`: core package
-- `src/ashare_backtest/web/`: local dashboard, backtest, and simulation console
-- `configs/`: runnable backtest and research configs
-- `research/`: local factor panels, model outputs, and latest artifacts
-- `storage/`: normalized parquet market data and source SQLite database
-- `strategies/`: protocol-constrained strategy scripts
-- `docs/`: research notes, runbooks, and design docs
-- `tests/`: regression tests
+## 目录
 
-Generated outputs under `results/`, `research/factors/`, and `research/models/` are treated as local artifacts and are ignored by Git.
+- `src/ashare_backtest/`：核心代码
+- `src/ashare_backtest/web/`：数据看板、回测控制台、模拟成交台
+- `configs/`：研究和回测配置
+- `research/`：本地产生的 factor、model 和 latest 工件
+- `storage/`：标准化 parquet 数据和源 SQLite 数据库
+- `strategies/`：受协议约束的策略脚本
+- `docs/`：设计文档、研究笔记和 runbook
+- `tests/`：回归测试
 
-## Installation
+`results/`、`research/factors/`、`research/models/` 下的产物默认视为本地生成文件，已经加入 `.gitignore`，不再作为仓库源码的一部分长期追踪。
 
-Requires Python 3.11+.
+## 安装
+
+需要 Python 3.11+。
 
 ```bash
 python -m pip install -e ".[dev]"
 ```
 
-This exposes:
+安装后会暴露两个命令：
 
 - `ashare-backtest`
 - `ashare-backtest-web`
 
-Copy the environment template before using Tushare-backed commands:
+建议先复制环境变量模板：
 
 ```bash
 cp .env.example .env
 ```
 
-Then fill in `TUSHARE_TOKEN` when you want to sync real market data.
+只有在使用 Tushare 同步真实数据时，才需要填写 `TUSHARE_TOKEN`。
 
-## Quick Demo
+## 快速体验
 
-If you want to evaluate the repository after clone without preparing your own market data, use the bundled tiny dataset under `storage/demo/`.
+如果你只是想在 clone 之后先体验一遍功能，而不想先准备自己的行情数据，可以直接使用仓库里内置的 `storage/demo/` 极小样例数据。
 
-Set up the environment:
+先初始化环境：
 
 ```bash
 bash scripts/bootstrap_demo.sh
 source .venv/bin/activate
 ```
 
-Run the demo research preset:
+运行内置 demo 研究配置：
 
 ```bash
 ashare-backtest run-research-config configs/demo_research.toml
 ```
 
-Start the local web console:
+启动本地 Web 控制台：
 
 ```bash
 ashare-backtest-web
 ```
 
-Then open `http://127.0.0.1:8765`.
+然后打开 `http://127.0.0.1:8765`。
 
-What this demo gives you:
+这个 demo 路径会给你：
 
-- a tracked tiny A-share sample dataset
-- one runnable research preset
-- one end-to-end example that generates factors, model scores, and backtest outputs locally
-- generated backtest outputs under `results/demo_backtest`
-- a local web UI for dashboard, backtest artifacts, and simulation views
+- 一套已跟踪的极小 A 股样例数据
+- 一个可直接运行的研究配置
+- 一条会在本地生成因子、分数和回测结果的完整示例链路
+- 一份输出到 `results/demo_backtest` 的回测结果
+- 一个可查看数据状态、回测工件和模拟视图的本地 Web 界面
 
-Before opening `/backtest`, run `ashare-backtest run-research-config configs/demo_research.toml` once so the demo score file is generated locally.
+在打开 `/backtest` 页面之前，请先执行一次 `ashare-backtest run-research-config configs/demo_research.toml`，让 demo 分数文件先在本地生成出来。
 
-If you want to switch from demo data to your own local dataset later, update the storage root in your config and use the full workflow below.
+如果后面要切到你自己的本地数据，只需要把配置里的 `storage root` 换掉，再走下面的完整工作流即可。
 
-## Quick Start
+## 快速开始
 
-Before running the full workflow on your own data, prepare the local data root first.
+如果你要在自己的数据上跑完整工作流，建议先把本地数据底座准备好。
 
-Recommended preparation order:
+推荐顺序如下：
 
-1. Install the project and copy `.env.example` to `.env`
-2. Fill in `TUSHARE_TOKEN`
-3. Create the first version of the local SQLite source database with Tushare sync
-4. Import SQLite into Parquet storage
-5. Run factor build, research, backtest, or the web console
+1. 安装项目并从 `.env.example` 复制出 `.env`
+2. 填写 `TUSHARE_TOKEN`
+3. 先用 Tushare 同步出第一版本地 SQLite 行情库
+4. 再把 SQLite 导入成 Parquet 存储
+5. 最后再跑因子、研究配置、回测或 Web 控制台
 
-### Prepare Initial SQLite Market Data
+### 准备第一版 SQLite 行情数据
 
-The repository uses a two-layer local data layout:
+仓库里的本地数据分成两层：
 
-- `storage/source/`: writable source SQLite database
-- `storage/parquet/`: analysis-friendly Parquet snapshots used by research and backtests
+- `storage/source/`：可写的源 SQLite 数据库
+- `storage/parquet/`：研究和回测使用的 Parquet 快照
 
-To create the first local SQLite market snapshot, run:
+第一次准备本地 SQLite 行情库时，可以运行：
 
 ```bash
 ashare-backtest sync-tushare-sqlite \
@@ -127,15 +129,15 @@ ashare-backtest sync-tushare-sqlite \
   --end 20260331
 ```
 
-This command will:
+这个命令会：
 
-- create `storage/source/ashare_arena_sync.db` if it does not already exist
-- sync the trading calendar
-- sync stock master data
-- sync daily bars into SQLite
-- refresh the derived `all_active` universe
+- 在不存在时创建 `storage/source/ashare_arena_sync.db`
+- 同步交易日历
+- 同步股票主数据
+- 同步日线行情到 SQLite
+- 刷新派生的 `all_active` 股票池
 
-If you also want benchmark history for web and reporting views, run:
+如果还希望补齐 Web 和报表里常用的基准指数历史，可以继续执行：
 
 ```bash
 ashare-backtest sync-tushare-benchmark \
@@ -144,25 +146,19 @@ ashare-backtest sync-tushare-benchmark \
   --end 20260331
 ```
 
-### Import SQLite Into Parquet
+### 把 SQLite 导入为 Parquet
 
-After SQLite is ready, import it into the Parquet storage layer:
+SQLite 准备好之后，再导入到 Parquet 分析层：
 
 ```bash
 ashare-backtest import-sqlite storage/source/ashare_arena_sync.db --storage-root storage
 ```
 
-This generates the standard files expected by the rest of the project under `storage/parquet/` and refreshes `storage/catalog.json`.
+这一步会在 `storage/parquet/` 下生成项目后续流程所需的标准文件，并刷新 `storage/catalog.json`。
 
-### Run The Research Flow
+### 运行研究流程
 
-Validate a strategy script:
-
-```bash
-ashare-backtest validate strategies/buy_and_hold.py
-```
-
-Build a factor snapshot from a named universe:
+基于指定 universe 构建 factor snapshot：
 
 ```bash
 ashare-backtest build-factors \
@@ -172,25 +168,25 @@ ashare-backtest build-factors \
   --as-of-date 2024-12-31
 ```
 
-Run a configured research pipeline:
+运行研究配置：
 
 ```bash
 ashare-backtest run-research-config configs/research_industry_v4_v1_1.toml
 ```
 
-Use the template config as a starting point for new presets:
+如果你要新建自己的配置，可以先从模板开始：
 
 ```bash
 cp examples/demo_research_config.toml configs/demo_research.toml
 ```
 
-Run the tracked demo preset against the bundled tiny dataset:
+如果只是验证公开仓库是否能跑通，可以直接运行内置 demo 配置：
 
 ```bash
 ashare-backtest run-research-config configs/demo_research.toml
 ```
 
-Run a backtest from exported model scores:
+基于模型分数执行回测：
 
 ```bash
 ashare-backtest run-model-backtest \
@@ -201,66 +197,74 @@ ashare-backtest run-model-backtest \
   --output-dir results/model_score_backtest
 ```
 
-### Start The Web Console
+### 启动 Web 控制台
 
-Once `storage/` contains imported data and you have at least one research or backtest run, start the local web console:
+当 `storage/` 下已经有导入后的数据，并且你至少跑过一次研究或回测后，可以启动本地 Web 控制台：
 
 ```bash
 ashare-backtest-web
 ```
 
-The default address is `http://127.0.0.1:8765`.
+默认访问地址是 `http://127.0.0.1:8765`。
 
-## Data Sync
+## 数据同步
 
-Sync daily bars from Tushare into the project source SQLite database:
+把 Tushare 日线数据同步到项目源 SQLite：
 
 ```bash
 ashare-backtest sync-tushare-sqlite --start 20240101 --end 20260331
 ```
 
-Sync benchmark index history into parquet storage:
+把基准指数历史同步到 parquet：
 
 ```bash
 ashare-backtest sync-tushare-benchmark --symbol 000300.SH --start 20240101 --end 20260331
 ```
 
-`TUSHARE_TOKEN` is used by default when `--token` is not provided.
+如果不显式传 `--token`，默认读取环境变量 `TUSHARE_TOKEN`。
 
-## Web Console
+## Web 控制台
 
-Start the local web console:
+启动本地控制台：
 
 ```bash
 ashare-backtest-web
 ```
 
-The console provides:
+当前控制台包含三个主要页面：
 
-- a landing dashboard for trading-calendar and data-source readiness
-- backtest run submission from configured presets
-- result browsing and summary metrics
-- equity curve visualization with optional benchmark overlay
-- trade log inspection
-- simulation-account creation, lineage inspection, and execution history views
+- `/`：数据看板，查看交易日历热力图、SQLite 数据源摘要和策略数量
+- `/backtest`：回测控制台，选择配置、分数文件和区间后直接发起回测
+- `/simulation`：模拟成交台，创建模拟账户、查看账户状态、执行历史和状态演化
 
-## Recommended Research Preset
+模拟页里 `strategy_state.json`、`decision_log.csv` 的 `decision_reason` 常见值包括：
 
-The current recommended preset is centered on [`configs/research_industry_v4_v1_1.toml`](/Users/yongqiuwu/works/github/Trade/configs/research_industry_v4_v1_1.toml):
+- `initial_entry`
+- `empty_universe`
+- `insufficient_history`
+- `rebalance_schedule`
+- `missing_scores`
+- `model_score_schedule`
 
-- factor panel: `industry_v4`
-- label: `industry_excess_fwd_return_5`
-- training: monthly walk-forward with a 12-month training window
-- portfolio: `top_k=6`, `rebalance_every=5`, `min_hold_bars=8`, `keep_buffer=2`
-- turnover control: `min_turnover_names=3`
-- industry constraint: `max_names_per_industry=2`
+排查模拟结果时，可以优先看 `summary.decision_reason`，判断当前是正常调仓、沿用旧仓位，还是数据准备存在缺口。
 
-The default tradable universe workflow gates stocks at the `universe` layer before factor construction. After import, the project generates:
+## 当前推荐研究配置
 
-- `all_active`: all currently active stocks
-- `tradable_core`: active, non-ST names listed for at least 120 days, with tradability and liquidity filters applied
+当前推荐使用 [`configs/research_industry_v4_v1_1.toml`](/Users/yongqiuwu/works/github/Trade/configs/research_industry_v4_v1_1.toml)：
 
-## Useful Documents
+- 因子面板：`industry_v4`
+- 标签：`industry_excess_fwd_return_5`
+- 训练：按月 walk-forward，训练窗口 12 个月
+- 组合：`top_k=6`、`rebalance_every=5`、`min_hold_bars=8`、`keep_buffer=2`
+- 换手控制：`min_turnover_names=3`
+- 行业约束：`max_names_per_industry=2`
+
+默认会先在 `universe` 层做股票池门禁，再让因子构建读取指定 universe。导入后通常会维护两个快照池：
+
+- `all_active`：当前 active 股票
+- `tradable_core`：当前 active、非 ST、上市满 120 天，并满足基本可交易性和流动性过滤
+
+## 相关文档
 
 - [`docs/mvp.md`](/Users/yongqiuwu/works/github/Trade/docs/mvp.md)
 - [`docs/research-pipeline.md`](/Users/yongqiuwu/works/github/Trade/docs/research-pipeline.md)
@@ -271,15 +275,13 @@ The default tradable universe workflow gates stocks at the `universe` layer befo
 - [`CONTRIBUTING.md`](/Users/yongqiuwu/works/github/Trade/CONTRIBUTING.md)
 - [`storage/demo/README.md`](/Users/yongqiuwu/works/github/Trade/storage/demo/README.md)
 
-## Testing
-
-Run the test suite with:
+## 测试
 
 ```bash
 python3 -m pytest
 ```
 
-Install the package first so `ashare_backtest` is importable:
+首次运行前建议先安装本包，否则测试阶段无法导入 `ashare_backtest`：
 
 ```bash
 python -m pip install -e ".[dev]"
