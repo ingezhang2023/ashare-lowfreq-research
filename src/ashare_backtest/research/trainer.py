@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -35,6 +36,16 @@ DEFAULT_FEATURE_COLUMNS = [
     "cross_rank_amount_ratio_5_20",
     "cross_rank_volatility_20",
 ]
+
+
+def _json_safe(value):
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    return value
 
 
 @dataclass(frozen=True)
@@ -175,7 +186,7 @@ def train_lightgbm_model(config: ModelTrainConfig) -> dict[str, float | int | st
 
     metrics_path = Path(config.output_metrics_path)
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
-    metrics_path.write_text(json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8")
+    metrics_path.write_text(json.dumps(_json_safe(metrics), indent=2, ensure_ascii=False), encoding="utf-8")
     return metrics
 
 
@@ -246,7 +257,7 @@ def train_lightgbm_walk_forward_as_of_date(config: WalkForwardAsOfDateConfig) ->
 
     metrics_path = Path(config.output_metrics_path)
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
-    metrics_path.write_text(json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8")
+    metrics_path.write_text(json.dumps(_json_safe(metrics), indent=2, ensure_ascii=False), encoding="utf-8")
     return metrics
 
 
@@ -340,7 +351,7 @@ def train_lightgbm_walk_forward_single_date(config: WalkForwardSingleDateConfig)
 
     metrics_path = Path(config.output_metrics_path)
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
-    metrics_path.write_text(json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8")
+    metrics_path.write_text(json.dumps(_json_safe(metrics), indent=2, ensure_ascii=False), encoding="utf-8")
     LOGGER.info(
         "single-date score complete as_of_date=%s scored_rows=%s scored_symbols=%s train_rows=%s output_scores=%s",
         metrics["as_of_date"],
@@ -482,5 +493,5 @@ def train_lightgbm_walk_forward(config: WalkForwardConfig) -> dict[str, float | 
 
     metrics_path = Path(config.output_metrics_path)
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
-    metrics_path.write_text(json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8")
+    metrics_path.write_text(json.dumps(_json_safe(metrics), indent=2, ensure_ascii=False), encoding="utf-8")
     return metrics

@@ -496,12 +496,21 @@ def list_score_parquet_files(
     models_root: Path = REPO_ROOT / "research" / "models",
     *,
     include_single_day: bool = True,
+    configured_paths: list[str] | None = None,
 ) -> list[dict[str, str]]:
-    if not models_root.exists():
-        return []
     manifest = load_score_source_manifest()
     files: list[dict[str, str]] = []
-    for path in models_root.rglob("*.parquet"):
+    candidate_paths: list[Path] = []
+    if models_root.exists():
+        candidate_paths.extend(path for path in models_root.rglob("*.parquet"))
+    for configured_path in configured_paths or []:
+        normalized = str(configured_path).strip()
+        if not normalized:
+            continue
+        resolved = _resolve_repo_path(normalized)
+        if resolved.exists() and resolved.is_file() and resolved.suffix == ".parquet":
+            candidate_paths.append(resolved)
+    for path in candidate_paths:
         if not path.is_file() or "scores" not in path.name:
             continue
         display_path = _display_path(path)
@@ -536,6 +545,11 @@ def list_score_parquet_files(
     for item in files:
         deduped[item["path"]] = item
     return [deduped[path] for path in sorted(deduped)]
+
+
+def _score_file_payload_for_presets(presets: list[StrategyPreset], *, include_single_day: bool = False) -> list[dict[str, str]]:
+    configured_paths = [preset.score_output_path for preset in presets if str(preset.score_output_path).strip()]
+    return list_score_parquet_files(include_single_day=include_single_day, configured_paths=configured_paths)
 
 
 def _resolve_selected_scores_path(scores_path: str, strategy_id: str, fallback_scores_path: str) -> tuple[str, dict[str, Any], str]:
@@ -2812,15 +2826,39 @@ class RequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/strategies":
             presets = [preset.__dict__ for preset in list_strategy_presets()]
-            self._send_json({"strategies": presets, "score_files": list_score_parquet_files(include_single_day=False)})
+            self._send_json(
+                {
+                    "strategies": presets,
+                    "score_files": _score_file_payload_for_presets(
+                        [StrategyPreset(**preset) for preset in presets],
+                        include_single_day=False,
+                    ),
+                }
+            )
             return
         if path == "/api/paper/strategies":
             presets = [preset.__dict__ for preset in list_strategy_presets()]
-            self._send_json({"strategies": presets, "score_files": list_score_parquet_files(include_single_day=False)})
+            self._send_json(
+                {
+                    "strategies": presets,
+                    "score_files": _score_file_payload_for_presets(
+                        [StrategyPreset(**preset) for preset in presets],
+                        include_single_day=False,
+                    ),
+                }
+            )
             return
         if path == "/api/simulation/strategies":
             presets = [preset.__dict__ for preset in list_strategy_presets()]
-            self._send_json({"strategies": presets, "score_files": list_score_parquet_files()})
+            self._send_json(
+                {
+                    "strategies": presets,
+                    "score_files": _score_file_payload_for_presets(
+                        [StrategyPreset(**preset) for preset in presets],
+                        include_single_day=True,
+                    ),
+                }
+            )
             return
         if path == "/api/dashboard/summary":
             self._send_json(build_dashboard_summary(repo_root=self.app.repo_root, config_root=CONFIG_ROOT))

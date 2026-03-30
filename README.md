@@ -79,6 +79,8 @@ Run the demo research preset:
 ashare-backtest run-research-config configs/demo_research.toml
 ```
 
+The repository also ships a pre-generated demo score file at [`research/demo/models/demo_scores.parquet`](/Users/yongqiuwu/works/github/Trade/research/demo/models/demo_scores.parquet), so the backtest page can be used immediately after clone. Re-running the demo preset is only needed when you want to reproduce the full research flow locally.
+
 Start the local web console:
 
 ```bash
@@ -91,6 +93,7 @@ What this demo gives you:
 
 - a tracked tiny A-share sample dataset
 - one runnable research preset
+- one bundled demo score parquet for the backtest page
 - generated backtest outputs under `results/demo_backtest`
 - a local web UI for dashboard, backtest artifacts, and simulation views
 

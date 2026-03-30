@@ -210,6 +210,32 @@ def test_list_score_parquet_files_can_exclude_single_day_scores(tmp_path: Path) 
     ]
 
 
+def test_list_score_parquet_files_includes_configured_scores_outside_default_models_root(tmp_path: Path) -> None:
+    models_root = tmp_path / "research" / "models"
+    models_root.mkdir(parents=True)
+    configured_score = tmp_path / "research" / "demo" / "models" / "demo_scores.parquet"
+    configured_score.parent.mkdir(parents=True)
+    pd.DataFrame(
+        [
+            {"trade_date": "2026-02-03", "symbol": "AAA", "prediction": 0.1},
+            {"trade_date": "2026-03-20", "symbol": "AAA", "prediction": 0.2},
+        ]
+    ).to_parquet(configured_score, index=False)
+
+    files = list_score_parquet_files(
+        models_root=models_root,
+        configured_paths=[configured_score.as_posix()],
+    )
+
+    assert files == [
+        {
+            "path": configured_score.as_posix(),
+            "start_date": "2026-02-03",
+            "end_date": "2026-03-20",
+        }
+    ]
+
+
 def test_load_score_source_manifest_maps_scores_to_upstream_metadata(tmp_path: Path) -> None:
     manifest_path = tmp_path / "research" / "models" / "score_source_manifest.json"
     manifest_path.parent.mkdir(parents=True)
