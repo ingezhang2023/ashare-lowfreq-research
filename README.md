@@ -62,6 +62,40 @@ cp .env.example .env
 
 Then fill in `TUSHARE_TOKEN` when you want to sync real market data.
 
+## Quick Demo
+
+If you want to evaluate the repository after clone without preparing your own market data, use the bundled tiny dataset under `storage/demo/`.
+
+Set up the environment:
+
+```bash
+bash scripts/bootstrap_demo.sh
+source .venv/bin/activate
+```
+
+Run the demo research preset:
+
+```bash
+ashare-backtest run-research-config configs/demo_research.toml
+```
+
+Start the local web console:
+
+```bash
+ashare-backtest-web
+```
+
+Then open `http://127.0.0.1:8765`.
+
+What this demo gives you:
+
+- a tracked tiny A-share sample dataset
+- one runnable research preset
+- generated backtest outputs under `results/demo_backtest`
+- a local web UI for dashboard, backtest artifacts, and simulation views
+
+If you want to switch from demo data to your own local dataset later, update the storage root in your config and use the full workflow below.
+
 ## Open Source Readiness
 
 To make this repository easy to evaluate after clone, treat these as the minimum operator path:

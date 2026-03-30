@@ -64,6 +64,40 @@ cp .env.example .env
 
 只有在使用 Tushare 同步真实数据时，才需要填写 `TUSHARE_TOKEN`。
 
+## 快速体验
+
+如果你只是想在 clone 之后先体验一遍功能，而不想先准备自己的行情数据，可以直接使用仓库里内置的 `storage/demo/` 极小样例数据。
+
+先初始化环境：
+
+```bash
+bash scripts/bootstrap_demo.sh
+source .venv/bin/activate
+```
+
+运行内置 demo 研究配置：
+
+```bash
+ashare-backtest run-research-config configs/demo_research.toml
+```
+
+启动本地 Web 控制台：
+
+```bash
+ashare-backtest-web
+```
+
+然后打开 `http://127.0.0.1:8765`。
+
+这个 demo 路径会给你：
+
+- 一套已跟踪的极小 A 股样例数据
+- 一个可直接运行的研究配置
+- 一份输出到 `results/demo_backtest` 的回测结果
+- 一个可查看数据状态、回测工件和模拟视图的本地 Web 界面
+
+如果后面要切到你自己的本地数据，只需要把配置里的 `storage root` 换掉，再走下面的完整工作流即可。
+
 ## 开源发布前建议
 
 如果目标是让别人 clone 后尽快体验，建议至少保证这条最短路径可用：
