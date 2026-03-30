@@ -16,6 +16,8 @@ results/
 # Generated research artifacts
 research/factors/
 research/models/
+!research/demo/
+!research/demo/**
 
 # Local market data snapshots
 storage/catalog.json
