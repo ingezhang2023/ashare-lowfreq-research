@@ -1,0 +1,41 @@
+[storage]
+root = "storage"
+
+[factor_spec]
+id = "full_market_native"
+universe_name = "all_active"
+start_date = "2020-04-16"
+
+[research_snapshot]
+as_of_date = "2026-04-16"
+
+[factors]
+output_path = "research/native/full_market/factors/full_market.parquet"
+
+[training]
+label_column = "fwd_return_5"
+train_window_months = 12
+validation_window_months = 1
+test_start_month = "2025-01"
+test_end_month = "2026-04"
+score_output_path = "research/native/full_market/models/full_market_scores.parquet"
+metric_output_path = "research/native/full_market/models/full_market_metrics.json"
+
+[analysis]
+layer_output_path = "research/native/full_market/models/full_market_layer.json"
+
+[model_backtest]
+output_dir = "results/native/full_market_backtest"
+start_date = "2025-01-02"
+end_date = "2026-04-16"
+top_k = 10
+rebalance_every = 5
+lookback_window = 20
+min_hold_bars = 5
+keep_buffer = 2
+min_turnover_names = 3
+min_daily_amount = 1000000
+initial_cash = 1000000
+commission_rate = 0.0003
+stamp_tax_rate = 0.001
+slippage_rate = 0.0005
