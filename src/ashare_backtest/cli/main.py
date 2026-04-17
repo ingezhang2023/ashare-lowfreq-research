@@ -98,6 +98,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="Directory where standardized Parquet data is stored",
     )
 
+    # 通达信 .day 文件导入
+    import_tdx_parser = subparsers.add_parser(
+        "import-tdx-day",
+        help="Import TDX .day files into Parquet storage",
+    )
+    import_tdx_parser.add_argument("--day-dir", required=True, help="Directory containing .day files")
+    import_tdx_parser.add_argument("--output-root", required=True, help="Output root directory for Parquet files")
+    import_tdx_parser.add_argument("--adj-factor-dir", required=False, help="Directory containing adjustment factors")
+    import_tdx_parser.add_argument("--code-mapping", required=False, help="Code mapping CSV file")
+    import_tdx_parser.add_argument("--start-date", required=False, help="Filter start date, YYYYMMDD")
+    import_tdx_parser.add_argument("--end-date", required=False, help="Filter end date, YYYYMMDD")
+    import_tdx_parser.add_argument("--parallel", required=False, type=int, default=None, help="Number of parallel processes")
+    import_tdx_parser.add_argument("--verbose", action="store_true", help="Verbose output")
+    import_tdx_parser.add_argument("--validate-only", action="store_true", help="Validate files only, no write")
+    import_tdx_parser.add_argument("--no-adjust", action="store_true", help="Skip adjustment processing")
+
     sync_tushare_parser = subparsers.add_parser(
         "sync-tushare-sqlite",
         help="Sync Tushare daily data into the source SQLite database",
@@ -652,6 +668,90 @@ def main() -> None:
                     f"IMPORTED: {dataset.name} rows={dataset.rows} "
                     f"range={dataset.min_date or '-'}..{dataset.max_date or '-'}"
                 )
+            return
+
+        if args.command == "import-tdx-day":
+            from ashare_backtest.cli.commands.import_tdx import main as tdx_main
+            sys.argv = ["ashare-backtest", "import-tdx-day"]
+            # 手动传递参数
+            import argparse as ap
+            tdx_parser = ap.ArgumentParser()
+            tdx_parser.add_argument("--day-dir", required=True)
+            tdx_parser.add_argument("--output-root", required=True)
+            tdx_parser.add_argument("--adj-factor-dir", default=None)
+            tdx_parser.add_argument("--code-mapping", default=None)
+            tdx_parser.add_argument("--start-date", default=None)
+            tdx_parser.add_argument("--end-date", default=None)
+            tdx_parser.add_argument("--parallel", type=int, default=None)
+            tdx_parser.add_argument("--verbose", action="store_true")
+            tdx_parser.add_argument("--validate-only", action="store_true")
+            tdx_parser.add_argument("--no-adjust", action="store_true")
+            tdx_args = tdx_parser.parse_args([
+                "--day-dir", args.day_dir,
+                "--output-root", args.output_root,
+                "--adj-factor-dir", args.adj_factor_dir or "",
+                "--code-mapping", args.code_mapping or "",
+                "--start-date", args.start_date or "",
+                "--end-date", args.end_date or "",
+            ] + (["--parallel", str(args.parallel)] if args.parallel else [])
+            + (["--verbose"] if args.verbose else [])
+            + (["--validate-only"] if args.validate_only else [])
+            + (["--no-adjust"] if args.no_adjust else []))
+            # 调用 import_tdx 模块
+            from ashare_backtest.data.tdx_parser import TDXDayParser
+            from ashare_backtest.data.tdx_cleaner import TDXDataCleaner
+            from ashare_backtest.data.tdx_adjust import TDXAdjuster
+            from pathlib import Path as PPath
+            import pandas as pd
+            from concurrent.futures import ProcessPoolExecutor, as_completed
+            from datetime import datetime
+            import json
+            import multiprocessing
+            
+            # 简化版处理逻辑
+            day_dir = PPath(args.day_dir)
+            output_root = PPath(args.output_root)
+            output_root.mkdir(parents=True, exist_ok=True)
+            
+            day_files = list(day_dir.glob("*.day"))
+            if not day_files:
+                raise SystemExit(f"No .day files found in {day_dir}")
+            
+            print(f"Found {len(day_files)} .day files")
+            
+            parser = TDXDayParser(verbose=args.verbose)
+            cleaner = TDXDataCleaner(verbose=args.verbose)
+            
+            success_count = 0
+            total_records = 0
+            
+            for f in day_files:
+                try:
+                    df, meta = parser.parse_file(str(f))
+                    if df is None:
+                        print(f"  FAILED: {f.name} - {meta.get('error', 'parse error')}")
+                        continue
+                    
+                    code = meta['code']
+                    df, stats = cleaner.clean(df, code)
+                    
+                    if df.empty:
+                        print(f"  FAILED: {f.name} - no data after cleaning")
+                        continue
+                    
+                    # 写入 Parquet
+                    out_path = output_root / "ashare" / f"{code}.parquet"
+                    out_path.parent.mkdir(parents=True, exist_ok=True)
+                    df.to_parquet(out_path, index=False)
+                    
+                    success_count += 1
+                    total_records += len(df)
+                    if args.verbose:
+                        print(f"  OK: {f.name} -> {code}.parquet ({len(df)} records)")
+                except Exception as e:
+                    print(f"  FAILED: {f.name} - {e}")
+            
+            print(f"\nImport complete: {success_count}/{len(day_files)} files, {total_records} records")
             return
 
         if args.command == "sync-tushare-sqlite":

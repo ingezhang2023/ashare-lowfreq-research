@@ -13,6 +13,7 @@ dependencies = [
     "pandas>=2.0.0",
     "pyarrow>=14.0.0",
     "scikit-learn>=1.4.0",
+    "tqdm>=4.66.0",
 ]
 
 [project.optional-dependencies]
@@ -21,6 +22,12 @@ dev = [
 ]
 qlib = [
     "pyqlib>=0.9.6",
+]
+tushare = [
+    "tushare>=1.4.0",
+]
+akshare = [
+    "akshare>=1.12.0",
 ]
 docs = [
     "mkdocs>=1.6,<2",
@@ -31,8 +38,8 @@ docs = [
 ashare-backtest = "ashare_backtest.cli.main:main"
 ashare-backtest-web = "ashare_backtest.web.app:main"
 
-[tool.setuptools]
-package-dir = {"" = "src"}
+[tool.setuptools.package-dir]
+"" = "src"
 
 [tool.setuptools.packages.find]
 where = ["src"]
