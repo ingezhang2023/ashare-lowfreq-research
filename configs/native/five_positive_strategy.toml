@@ -1,0 +1,63 @@
+# 五连阳策略配置
+# 规则选股策略：每日选择满足五连阳形态的股票
+
+[storage]
+root = "storage"
+
+[factor_spec]
+id = "five_positive_bars"
+universe_name = "all_active"
+start_date = "2020-04-16"
+
+[research_snapshot]
+as_of_date = "2026-04-16"
+
+[factors]
+# 使用自定义因子（非标准因子面板）
+output_path = "research/native/five_positive/factors/five_positive.parquet"
+
+# 策略规则定义（供参考）
+[factor_rules]
+# 条件1: 五连阳形态（最近5日内没有阴线，最多1根十字星）
+lookback_days = 5
+min_positive_count = 4
+max_doji_count = 1
+
+# 条件2: 涨幅限制
+min_return_pct = 0.0
+max_return_pct = 10.0
+
+# 条件3: 均线多头排列
+ma_periods = [5, 10, 20, 30]
+
+[model_backtest]
+output_dir = "results/native/five_positive_backtest"
+start_date = "2025-01-02"
+end_date = "2026-04-16"
+
+# 每日调仓，最多持有1只股票
+top_k = 1
+rebalance_every = 1  # 每日调仓
+
+# 简化参数（无缓冲）
+lookback_window = 5
+min_hold_bars = 1
+keep_buffer = 0
+min_turnover_names = 1
+
+# 流动性要求
+min_daily_amount = 50000000  # 日均成交额 >= 5000万
+
+# 初始资金
+initial_cash = 1000000
+
+# 交易成本
+commission_rate = 0.0003
+stamp_tax_rate = 0.001
+slippage_rate = 0.0005
+
+# 止损止盈
+[stop_loss_profit]
+stop_loss_pct = 0.05   # 止损 5%
+stop_profit_pct = 0.09  # 止盈 9%
+max_drawdown_pct = 0.07  # 最大回撤 7%
